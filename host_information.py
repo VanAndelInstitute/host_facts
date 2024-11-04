@@ -1,4 +1,4 @@
-#possibly need to run pip install pandas
+#possibly need to run pip install pandas, openpyxl
 import requests
 import urllib3
 import json
@@ -20,16 +20,35 @@ class API_data:
         r = requests.get(url, headers=self.headers, verify=False)
         if r.status_code == 200:
             r_json = r.json()
-            df = pd.json_normalize(r_json['results'])
+            df = pd.json_normalize(r_json['results']) #flatten the data
             hosts = df['id']
 
+            #get host numbers
             for host_no in hosts:
                 self.host_lst.append(host_no)
-
+            
             #if there is a next page, recurse with the url held in the 'next' field
             if r_json['next']:
                 next_url = 'https://ansible.vai.org:8043' + r_json['next']
                 self.add_to_hosts(next_url)
+            else:
+                self.json_to_excel(url)
+
+    #iterate through hosts to get each of the facts
+    def get_facts(self):
+        url = 'https://ansible.vai.org:8043'
+        for host_no in self.host_lst:
+            new_url = url + f'/{host_no}/ansible_facts'
+            
+        #FIXME {Continue implementing this function}
+
+    def json_to_excel(self):
+        excel_file = 'host_information.xlsx'
+        df.to_excel(excel_file, index=False, sheet_name='Hosts + Information')
+        print(f"successfully saved data to {excel_file}")
+
+        #FIXME {Continue implementing this function}
+
 
 
 #suppress warnings and set parameters
@@ -43,3 +62,4 @@ data = API_data(b_token=b_token)
 #get all the hosts
 data.add_to_hosts( url = 'https://ansible.vai.org:8043/api/v2/hosts/')
 print(len(data.host_lst))
+
