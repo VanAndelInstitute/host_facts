@@ -4,6 +4,7 @@ import urllib3
 import json
 import pandas as pd
 import xlsxwriter
+from openpyxl import load_workbook
 
 #create data structure to hold repeated information
 class API_data:
@@ -35,21 +36,29 @@ class API_data:
 
     #iterate through hosts to get each of the facts for that host
     def get_facts(self):
-
-        new_excel_file = 'host_information3.xlsx'
+        host_label = []
+        count_hosts = 0
+        new_excel_file = 'host_information_test002.xlsx'
         with pd.ExcelWriter(new_excel_file, engine='xlsxwriter') as writer:
 
-            TEST_host_lst = self.host_lst[:5]
-
-            for host_no in TEST_host_lst:
+            for host_no in self.host_lst[:1]:
+                hn = f'Host {host_no}'
                 url = f'https://ansible.vai.org:8043/api/v2/hosts/{host_no}/ansible_facts'
                 r = requests.get(url, headers=self.headers, verify=False)
                 if r.status_code == 200:
                     r_json = r.json()
                     df = pd.json_normalize(r_json) 
+                    
+                    for i in range(len(df)):
+                        host_label.append(hn)
+                        host_label.T.to_excel(writer, sheet_name=hn)
+        
+                    df.T.to_excel(writer, startcol=1, index_label=hn, sheet_name=hn)
+                    print(f"successfully saved Host {hn} data to spreadsheet")
+                    count_hosts += 1
 
-                    df.T.to_excel(writer, sheet_name=f'Host {host_no}')
-                    print(f"successfully saved data to {writer}")
+        print(f'Number of hosts saved: {count_hosts}')
+
 
 #suppress warnings and set parameters
 urllib3.disable_warnings()
