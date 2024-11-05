@@ -16,14 +16,11 @@ class API_data:
 
     #add hosts to host_lst from each page of the API
     def add_to_hosts(self, url):
-
         r = requests.get(url, headers=self.headers, verify=False)
         if r.status_code == 200:
             r_json = r.json()
-            df = pd.json_normalize(r_json['results']) #flatten the data
+            df = pd.json_normalize(r_json['results']) #flatten the data to pull the host ids
             hosts = df['id']
-
-            #get host numbers
             for host_no in hosts:
                 self.host_lst.append(host_no)
             
@@ -32,34 +29,31 @@ class API_data:
                 next_url = 'https://ansible.vai.org:8043' + r_json['next']
                 self.add_to_hosts(next_url)
             else:
-                self.json_to_excel(url)
+                self.get_facts()
 
-    #iterate through hosts to get each of the facts
+    #iterate through hosts to get each of the facts for that host
     def get_facts(self):
-        url = 'https://ansible.vai.org:8043'
         for host_no in self.host_lst:
-            new_url = url + f'/{host_no}/ansible_facts'
-            
-        #FIXME {Continue implementing this function}
+            url = f'https://ansible.vai.org:8043/api/v2/hosts/{host_no}/ansible_facts'
+            r = requests.get(url, headers=self.headers, verify=False)
+            if r.status_code == 200:
+                r_json = r.json()
+                df = pd.json_normalize(r_json) 
+                self.json_to_excel(df=df)
 
-    def json_to_excel(self):
+    #create an excel file
+    def json_to_excel(self, df):
         excel_file = 'host_information.xlsx'
         df.to_excel(excel_file, index=False, sheet_name='Hosts + Information')
         print(f"successfully saved data to {excel_file}")
-
-        #FIXME {Continue implementing this function}
-
 
 
 #suppress warnings and set parameters
 urllib3.disable_warnings()
 
 #parameters
-host_lst = []
 b_token = input("Enter Bearer Token: ")
 data = API_data(b_token=b_token)
 
 #get all the hosts
 data.add_to_hosts( url = 'https://ansible.vai.org:8043/api/v2/hosts/')
-print(len(data.host_lst))
-
