@@ -11,11 +11,12 @@ class API_data:
     def __init__(self, b_token):
         self.b_token = b_token,
         self.host_lst = []
+        self.host_names = {}
         self.headers = {
             "Authorization": f"Bearer {b_token}",
             "Content-Type": "application/json"
         }
-        self.df_list = []
+        self.df_list = [] #FIXME might not need
 
     #add hosts to host_lst from each page of the API
     def get_hosts(self, url):
@@ -34,34 +35,39 @@ class API_data:
             else:
                 self.get_facts()
 
-    #iterate through hosts to get each of the facts for that host
+
     def get_facts(self):
-        host_label = []
+
+        #initialize variables
         count_hosts = 0
-        new_excel_file = 'host_information_test002.xlsx'
-        with pd.ExcelWriter(new_excel_file, engine='xlsxwriter') as writer:
+        col_num = 0
 
-            for host_no in self.host_lst[:1]:
-                hn = f'Host {host_no}'
-                url = f'https://ansible.vai.org:8043/api/v2/hosts/{host_no}/ansible_facts'
-                r = requests.get(url, headers=self.headers, verify=False)
-                if r.status_code == 200:
-                    r_json = r.json()
-                    df = pd.json_normalize(r_json) 
-                    
-                    for i in range(len(df)):
-                        host_label.append(hn)
-                        host_label.T.to_excel(writer, sheet_name=hn)
-        
-                    df.T.to_excel(writer, startcol=1, index_label=hn, sheet_name=hn)
-                    print(f"successfully saved Host {hn} data to spreadsheet")
-                    count_hosts += 1
+        for host_no in self.host_lst:
+            url = f'https://ansible.vai.org:8043/api/v2/hosts/{host_no}/ansible_facts'
+            r = requests.get(url, headers=self.headers, verify=False)
 
+            if r.status_code == 200:
+                r_json = r.json()
+                self.host_names[host_no] = r_json['ansible_nodename']
+                df = pd.json_normalize(r_json, sep=' ')
+
+                server = f'{self.host_names[host_no]}'
+                host_ids = [server] * len(df.columns)  #to add a host number alongside the information (querying)
+                df.loc[-1] = host_ids
+                df.index += 1
+                df.sort_index()
+                df = df.T
+
+                csv_file = 'host_information.csv'
+                df.to_csv(csv_file, mode='a')
+                print(f"Successfully saved {server} data to host_information.csv")
+                count_hosts += 1
         print(f'Number of hosts saved: {count_hosts}')
 
 
 #suppress warnings and set parameters
 urllib3.disable_warnings()
+print("\nDelete the file 'host_information.csv' if it already exists (will be in the same file as this script)\n")
 b_token = input("Enter Bearer Token: ")
 data = API_data(b_token=b_token)
 data.get_hosts( url = 'https://ansible.vai.org:8043/api/v2/hosts/')
