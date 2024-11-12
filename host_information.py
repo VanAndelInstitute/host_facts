@@ -4,9 +4,7 @@ import urllib3
 import json
 import os
 import pandas as pd
-import xlsxwriter
 from dotenv import load_dotenv
-from openpyxl import load_workbook
 
 class API_data:
     def __init__(self, TOKEN):
