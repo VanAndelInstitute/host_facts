@@ -1,22 +1,21 @@
-#possibly need to run pip install pandas, openpyxl
+#possibly need to run pip install pandas, openpyxl, python-dotenv
 import requests
 import urllib3
 import json
+import os
 import pandas as pd
 import xlsxwriter
+from dotenv import load_dotenv
 from openpyxl import load_workbook
 
-#create data structure to hold repeated information
 class API_data:
-    def __init__(self, b_token):
-        self.b_token = b_token,
+    def __init__(self, TOKEN):
         self.host_lst = []
         self.host_names = {}
         self.headers = {
-            "Authorization": f"Bearer {b_token}",
+            "Authorization": f"Bearer {TOKEN}",
             "Content-Type": "application/json"
         }
-        self.df_list = [] #FIXME might not need
 
     #add hosts to host_lst from each page of the API
     def get_hosts(self, url):
@@ -35,17 +34,14 @@ class API_data:
             else:
                 self.get_facts()
 
-
+    #
     def get_facts(self):
-
-        #initialize variables
         count_hosts = 0
         col_num = 0
 
         for host_no in self.host_lst:
             url = f'https://ansible.vai.org:8043/api/v2/hosts/{host_no}/ansible_facts'
             r = requests.get(url, headers=self.headers, verify=False)
-
             if r.status_code == 200:
                 r_json = r.json()
                 self.host_names[host_no] = r_json['ansible_nodename']
@@ -65,9 +61,16 @@ class API_data:
         print(f'Number of hosts saved: {count_hosts}')
 
 
-#suppress warnings and set parameters
+#suppress warnings and load environment variables
 urllib3.disable_warnings()
-print("\nDelete the file 'host_information.csv' if it already exists (will be in the same file as this script)\n")
-b_token = input("Enter Bearer Token: ")
-data = API_data(b_token=b_token)
-data.get_hosts( url = 'https://ansible.vai.org:8043/api/v2/hosts/')
+load_dotenv()
+
+#check if environmental variable called 'TOKEN' exists. 
+if 'TOKEN' in os.environ:
+    TOKEN = os.getenv('TOKEN')
+    print("\nDelete the file 'host_information.csv' if it already exists (will be in the same file as this script)\n")
+    data = API_data(TOKEN=TOKEN)
+    data.get_hosts( url = 'https://ansible.vai.org:8043/api/v2/hosts/')
+else:
+    print("'TOKEN' does not exist as an evironment variable.")
+    print("Initialize an environmental variable called 'TOKEN' with your bearer token. Rerun the script upon completion")
