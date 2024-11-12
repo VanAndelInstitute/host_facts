@@ -34,11 +34,21 @@ class API_data:
             else:
                 self.get_facts()
 
-    #
+    #retrieves the information of every host and appends it to a file called host_information.csv
     def get_facts(self):
         count_hosts = 0
         col_num = 0
 
+        #delete old host_facts file if it exists
+        csv_file = 'host_information.csv'
+        if os.path.exists(csv_file) and os.path.isfile(csv_file):
+            print("'host_information.csv' already exists. This file will be removed and a new one will be generated.\n")
+            os.remove(csv_file)
+            print("Generating new file: 'host_information.csv'\n")
+        else:
+            print("'host_information.csv' does not exist. Generating new file: 'host_information.csv'\n")
+        
+        #retrieving information for each host
         for host_no in self.host_lst:
             url = f'https://ansible.vai.org:8043/api/v2/hosts/{host_no}/ansible_facts'
             r = requests.get(url, headers=self.headers, verify=False)
@@ -47,18 +57,18 @@ class API_data:
                 self.host_names[host_no] = r_json['ansible_nodename']
                 df = pd.json_normalize(r_json, sep=' ')
 
+                #add hostname to each column of information, then trans
                 server = f'{self.host_names[host_no]}'
-                host_ids = [server] * len(df.columns)  #to add a host number alongside the information (querying)
-                df.loc[-1] = host_ids
+                host_nodename = [server] * len(df.columns)  #to add a host nodename each row of information
+                df.loc[-1] = host_nodename 
                 df.index += 1
                 df.sort_index()
                 df = df.T
 
-                csv_file = 'host_information.csv'
                 df.to_csv(csv_file, mode='a')
                 print(f"Successfully saved {server} data to host_information.csv")
                 count_hosts += 1
-        print(f'Number of hosts saved: {count_hosts}')
+        print(f'\nNumber of hosts saved: {count_hosts}')
 
 
 #suppress warnings and load environment variables
@@ -68,9 +78,11 @@ load_dotenv()
 #check if environmental variable called 'TOKEN' exists. 
 if 'TOKEN' in os.environ:
     TOKEN = os.getenv('TOKEN')
-    print("\nDelete the file 'host_information.csv' if it already exists (will be in the same file as this script)\n")
+    print("Process Starting...\n")
     data = API_data(TOKEN=TOKEN)
     data.get_hosts( url = 'https://ansible.vai.org:8043/api/v2/hosts/')
+    print('Process Ended Successfully\n')
 else:
     print("'TOKEN' does not exist as an evironment variable.")
-    print("Initialize an environmental variable called 'TOKEN' with your bearer token. Rerun the script upon completion")
+    print("Initialize an environmental variable called 'TOKEN' with your bearer token. Rerun the script upon completion.\n")
+
